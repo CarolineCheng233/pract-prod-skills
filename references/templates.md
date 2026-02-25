@@ -172,13 +172,38 @@ tags: [工具]
 
 ---
 
-## 项目记录 (projects/)
+## 项目想法 (projects/ideas/)
+
+文件名：想法的简短描述，如 `AI写作助手.md`
+
+```markdown
+---
+type: idea
+date: {{YYYY-MM-DD}}
+importance: {{1-10}}
+status: 未启动
+---
+
+# {{想法标题}}
+
+## 想法内容
+
+
+## 方案调研
+
+暂无
+```
+
+---
+
+## 项目记录 (projects/doing/ 和 projects/done/)
 
 ```markdown
 ---
 type: project
 date: {{YYYY-MM-DD}}
-status: active
+status: doing
+idea: ideas/{{对应想法文件名}}.md
 tags: [项目]
 ---
 
