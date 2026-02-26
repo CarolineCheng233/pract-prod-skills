@@ -365,11 +365,19 @@ bash scripts/11_brevo_authenticate.sh <domain> [timeout_seconds]
 
 If timeout is reached, display the `dns_records_status` to the user so they know which specific record hasn't propagated yet. They can re-run Step 11 later without needing to redo Steps 9–10.
 
+> **When Step 11 succeeds (`authenticated: true`), immediately proceed to Step 12 — do not stop to ask the user.**
+
 ---
 
 ### Step 12 — Send Test Email (Verification)
 
+> **This step is automatic.** When Step 11 succeeds, execute Step 12 immediately without asking.
+
 After Brevo authentication completes, send a test email from the domain via Brevo's transactional API to verify end-to-end delivery.
+
+**Determining `from_email` and `to_email`:**
+- `from_email`: use the email forwarding address configured in Step 7 (e.g. `contact@example.com`). If Step 7 was not executed in this session, use `contact@<domain>` as default.
+- `to_email`: use the Brevo account email (shown by `check_env.sh` as the BREVO_API_KEY owner), or the destination email from Step 7 if available.
 
 ```bash
 bash scripts/12_test_email.sh <from_email> <to_email> [from_name]
