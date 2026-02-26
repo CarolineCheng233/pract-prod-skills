@@ -1,1 +1,5 @@
-knowledge-base/.gitignore
+.DS_Store
+*.skill
+__pycache__/
+*.pyc
+.env
