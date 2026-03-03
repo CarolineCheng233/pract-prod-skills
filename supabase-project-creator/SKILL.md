@@ -71,12 +71,11 @@ Use `AskUserQuestion` to gather the following in a single prompt:
 **Project URL:**
 - Construct from project ref: `https://<project_ref>.supabase.co`
 
-### Step 5: Write Credentials to .env
+### Step 5: Write Credentials to .env.local
 
-1. Check if `.env` exists in the current project directory
-   - If `.env` exists: read it and update/append Supabase variables
-   - If `.env` does not exist: check if `.env.local` exists and use that instead
-   - If neither exists: create `.env`
+1. Check if `.env.local` exists in the current project directory
+   - If `.env.local` exists: read it and update/append Supabase variables
+   - If `.env.local` does not exist: create it
 2. Write or update these variables:
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://<project_ref>.supabase.co
@@ -129,10 +128,10 @@ Display a results table:
 | Dashboard | https://supabase.com/dashboard/project/xxx |
 
 Files modified:
-- `.env` (or `.env.local`) — Supabase credentials written
+- `.env.local` — Supabase credentials written
 - `.mcp.json` — (if applicable) project-scoped access configured
 
 Reminders:
-- Make sure `.env` is in your `.gitignore` — never commit secrets to git
+- Make sure `.env.local` is in your `.gitignore` — never commit secrets to git
 - The `SUPABASE_SERVICE_ROLE_KEY` bypasses Row Level Security — use it only on the server side
 - Dashboard: `https://supabase.com/dashboard/project/<project_ref>`
