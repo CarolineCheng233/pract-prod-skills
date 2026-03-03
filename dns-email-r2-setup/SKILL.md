@@ -1,6 +1,6 @@
 ---
 name: dns-email-r2-setup
-description: Automate full domain onboarding across Cloudflare, Spaceship, and Brevo, plus Cloudflare R2 storage bucket setup. Covers adding the domain to Cloudflare, DNS setup, nameserver updates on Spaceship, zone activation, email routing, destination email verification, Brevo transactional email domain authentication, and R2 bucket creation with API credentials written to the project .env file.
+description: Automate full domain onboarding across Cloudflare, Spaceship, and Brevo, plus Cloudflare R2 storage bucket setup. Covers adding the domain to Cloudflare, DNS setup, nameserver updates on Spaceship, zone activation, email routing, destination email verification, Brevo transactional email domain authentication, and R2 bucket creation with API credentials written to the project .env.local file.
 ---
 
 # Cloudflare + Spaceship + Brevo Domain Setup Skill
@@ -504,7 +504,7 @@ Step 5: Verify ownership
 
 > **Prerequisite:** `CF_ACCOUNT_ID` must be set and `CF_API_TOKEN` must have `Workers R2 Storage: Edit` permission. R2 must also be enabled for the account — if not yet enabled, go to Cloudflare Dashboard → R2 Object Storage → click **Enable R2** (requires a payment method on file). These steps are independent of the DNS/email steps above and can be run on their own.
 
-Steps 14–15 are automated. Steps 16–17 are manual (dashboard + .env editing).
+Steps 14–15 are automated. Steps 16–17 are manual (dashboard + .env.local editing).
 
 **Bucket naming:** R2 bucket names cannot contain dots. Replace `.` with `-` when converting a domain to a bucket name (e.g. `example.com` → `example-com`).
 
@@ -581,9 +581,9 @@ Once the user provides all three values, proceed to Step 17.
 
 ---
 
-### Step 17 — Write Storage Config to .env
+### Step 17 — Write Storage Config to .env.local
 
-Use the Edit tool to write the known values directly into the project's `.env` file, then show the user what still needs to be filled in manually.
+Use the Edit tool to write the known values directly into the project's `.env.local` file, then show the user what still needs to be filled in manually.
 
 **What Claude already knows from previous steps:**
 - `STORAGE_BUCKET` — bucket name from Step 14
@@ -595,7 +595,7 @@ Use the Edit tool to write the known values directly into the project's `.env` f
 - `STORAGE_ACCESS_KEY` — Access Key ID
 - `STORAGE_SECRET_KEY` — Secret Access Key
 
-Use the Edit tool to set or update these lines in the project's `.env` file (ask the user for the path if unknown):
+Use the Edit tool to set or update these lines in the project's `.env.local` file (ask the user for the path if unknown; default is `<project_root>/.env.local`):
 
 ```
 STORAGE_ENDPOINT=（待填写）
@@ -609,14 +609,14 @@ STORAGE_DOMAIN=<actual public_url from Step 15>
 After writing, display this message to the user:
 
 ```
-✅ 已写入 .env：STORAGE_BUCKET、STORAGE_DOMAIN、STORAGE_REGION
+✅ 已写入 .env.local：STORAGE_BUCKET、STORAGE_DOMAIN、STORAGE_REGION
 
 请手动填写以下三项（值来自 Step 16 Dashboard 页面）：
   STORAGE_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
   STORAGE_ACCESS_KEY=<Access Key ID>
   STORAGE_SECRET_KEY=<Secret Access Key>
 
-注意：.env 包含密钥，确保已加入 .gitignore
+注意：.env.local 包含密钥，确保已加入 .gitignore
 ```
 
 ---
@@ -626,7 +626,7 @@ After writing, display this message to the user:
 - Step 14: bucket already exists → `"note": "bucket_already_exists"` — not an error, continue.
 - Step 15: if the API returns an error about the bucket not existing, make sure Step 14 ran successfully first.
 - Step 16: if the user cannot find "Manage R2 API Tokens" in the dashboard, make sure R2 has been enabled for the account (R2 Overview page → Enable R2). If "Specify bucket(s)" option is missing, R2 may not have any buckets yet — ensure Step 14 completed successfully first.
-- Step 17: if the user is unsure which `.env` file to edit, check the project root for `.env`, `.env.local`, or `.env.production`.
+- Step 17: if `.env.local` does not exist in the project root, create it. If the user asks why not `.env`, explain that `.env.local` takes precedence in Next.js and is conventionally excluded from version control.
 
 ---
 
