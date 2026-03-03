@@ -1,6 +1,6 @@
 ---
-name: dns-email-setup
-description: Automate full domain onboarding across Cloudflare, Spaceship, and Brevo. Covers adding the domain to Cloudflare, DNS setup, nameserver updates on Spaceship, zone activation, email routing, destination email verification, and Brevo transactional email domain authentication.
+name: dns-email-r2-setup
+description: Automate full domain onboarding across Cloudflare, Spaceship, and Brevo, plus Cloudflare R2 storage bucket setup. Covers adding the domain to Cloudflare, DNS setup, nameserver updates on Spaceship, zone activation, email routing, destination email verification, Brevo transactional email domain authentication, and R2 bucket creation with API credentials written to the project .env file.
 ---
 
 # Cloudflare + Spaceship + Brevo Domain Setup Skill
@@ -13,10 +13,12 @@ Before running any steps, ensure the following environment variables are set and
 
 | Variable | Required for | Description |
 |----------|-------------|-------------|
-| `CF_API_TOKEN` | Steps 1–8 | Cloudflare API token (see required permissions below) |
+| `CF_API_TOKEN` | Steps 1–8, 14–15 | Cloudflare API token (see required permissions below) |
+| `CF_ACCOUNT_ID` | Steps 14–15 | Cloudflare Account ID (dashboard → right sidebar → Account ID) |
 | `SPACESHIP_API_KEY` | Step 4 | Spaceship API key (spaceship.com → API Manager) |
 | `SPACESHIP_API_SECRET` | Step 4 | Spaceship API secret (shown only once at creation) |
-| `BREVO_API_KEY` | Steps 9–12 | Brevo API key (app.brevo.com/settings/keys/api) |
+| `BREVO_API_KEY` | Steps 9–13 | Brevo API key (app.brevo.com/settings/keys/api) |
+| `BREVO_SMTP_KEY` | Step 13 | Brevo SMTP key (Brevo → Settings → SMTP & API → SMTP tab) |
 
 Tools required: `curl` (macOS built-in), `jq` (`brew install jq`)
 
@@ -25,10 +27,13 @@ Tools required: `curl` (macOS built-in), `jq` (`brew install jq`)
 | Scope | Permission | Access |
 |-------|-----------|--------|
 | Account | Account Settings | Edit |
+| Account | Workers R2 Storage | Edit |
 | Zone | Email Routing Rules | Edit |
 | Zone | Zone Settings | Edit |
 | Zone | Zone | Edit |
 | Zone | DNS | Edit |
+
+> **R2 note:** `Workers R2 Storage: Edit` is only required if you plan to run Steps 14–15. If your token was created before adding R2 steps, edit it to add this permission (Account → Workers R2 Storage → Edit).
 
 Always run the environment check first:
 
@@ -403,6 +408,82 @@ After sending, verify delivery:
 
 ---
 
+## Gmail "Send mail as" Configuration (Step 13)
+
+> **Prerequisite:** Steps 7 (email forwarding), 9–11 (Brevo authentication) must be completed. `BREVO_SMTP_KEY` must be set.
+
+This step retrieves SMTP credentials and outputs step-by-step instructions for the user to manually configure Gmail's "Send mail as" feature. The user will be able to send emails from their custom domain address (e.g. `contact@example.com`) directly in Gmail, using Brevo as the SMTP relay.
+
+---
+
+### Step 13 — Get SMTP Config & Display Setup Instructions
+
+```bash
+bash scripts/13_gmail_send_as_config.sh <domain> <from_prefix>
+# Use the same from_prefix from Step 7
+# Example: bash scripts/13_gmail_send_as_config.sh example.com contact
+```
+
+**Returns:**
+```json
+{
+  "smtp_server": "smtp-relay.brevo.com",
+  "smtp_port": 587,
+  "smtp_login": "<your-brevo-smtp-login>@smtp-brevo.com",
+  "smtp_password_env": "BREVO_SMTP_KEY",
+  "display_name": "ExampleCom Team",
+  "from_email": "contact@example.com",
+  "domain": "example.com",
+  "tls": true
+}
+```
+
+After getting the JSON, **display detailed setup instructions to the user** with all values filled in. Use the template below, substituting values from the JSON output and the actual `BREVO_SMTP_KEY` environment variable value:
+
+````
+📧 Gmail "Send mail as" Setup Instructions
+
+Please follow these steps to add {from_email} as a send-as address in Gmail:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Open Gmail Settings
+   → Open https://mail.google.com/mail/u/0/#settings/accounts
+   → Or: Gmail → ⚙️ Settings (gear icon) → See all settings → "Accounts and Import" tab
+
+Step 2: Add another email address
+   → In the "Send mail as" section, click "Add another email address"
+   → A popup window will open
+
+Step 3: Fill in your identity (popup window page 1)
+   → Name:  {display_name}
+   → Email: {from_email}
+   → Click "Next Step"
+
+Step 4: Fill in SMTP settings (popup window page 2)
+   → SMTP Server: smtp-relay.brevo.com
+   → Port:        587
+   → Username:    {smtp_login}
+   → Password:    {actual BREVO_SMTP_KEY value}
+   → Security:    ◉ Secured connection using TLS (recommended)
+   → Click "Add Account"
+
+Step 5: Verify ownership
+   → Gmail will send a verification email to {from_email}
+   → This email is forwarded to your Gmail inbox via Cloudflare Email Routing
+   → Open the verification email and enter the confirmation code in the popup
+   → Click "Verify"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Once verified, you can compose emails in Gmail and select
+   "{display_name} <{from_email}>" in the "From" dropdown.
+````
+
+**Important:** Print the actual `BREVO_SMTP_KEY` value in the password field (read from the environment variable), so the user can copy-paste it directly. Do NOT print just the env var name.
+
+---
+
 ## Error Handling
 
 - If any script exits non-zero, surface the raw error JSON to the user and stop.
@@ -415,6 +496,139 @@ After sending, verify delivery:
 - Step 10: records already present are skipped (not errors). DMARC is updated (not replaced) if it exists.
 - Step 11: timeout is not a hard failure — DNS propagation can take up to 48 hours. Tell the user to re-run Step 11 once they believe DNS has propagated.
 - Step 12: if Brevo API returns an error (e.g. sender not authorized), surface the error. If the test email is sent but not found via Gmail MCP, ask the user to check spam folder manually.
+- Step 13: if `BREVO_SMTP_KEY` is not set, surface the error with the hint to find it at Brevo → Settings → SMTP & API. If the Brevo API call fails, surface the raw error JSON.
+
+---
+
+## R2 Storage Setup (Steps 14–17)
+
+> **Prerequisite:** `CF_ACCOUNT_ID` must be set and `CF_API_TOKEN` must have `Workers R2 Storage: Edit` permission. R2 must also be enabled for the account — if not yet enabled, go to Cloudflare Dashboard → R2 Object Storage → click **Enable R2** (requires a payment method on file). These steps are independent of the DNS/email steps above and can be run on their own.
+
+Steps 14–15 are automated. Steps 16–17 are manual (dashboard + .env editing).
+
+**Bucket naming:** R2 bucket names cannot contain dots. Replace `.` with `-` when converting a domain to a bucket name (e.g. `example.com` → `example-com`).
+
+---
+
+### Step 14 — Create R2 Bucket
+
+Creates a bucket with automatic location and Standard storage class. **Convert the domain to a valid bucket name by replacing `.` with `-`** before passing it (e.g. `example.com` → `example-com`).
+
+```bash
+bash scripts/14_r2_create_bucket.sh <bucket_name>
+# Example: bash scripts/14_r2_create_bucket.sh example-com
+```
+
+**Returns:**
+```json
+{ "bucket_name": "example-com", "location": "auto", "storage_class": "Standard", "created": true }
+```
+
+If `"note": "bucket_already_exists"` is present — not an error, continue.
+
+---
+
+### Step 15 — Enable Public Development URL
+
+Enables the R2 public development URL so objects can be accessed via HTTPS without extra configuration.
+
+```bash
+bash scripts/15_r2_enable_public_url.sh <bucket_name>
+# Example: bash scripts/15_r2_enable_public_url.sh example-com
+```
+
+**Returns:**
+```json
+{ "bucket_name": "example-com", "public_url": "https://example-com.<account_id>.r2.dev", "enabled": true }
+```
+
+Save `public_url` — used for `STORAGE_DOMAIN` in Step 17. In production, replace this with your custom CDN domain.
+
+---
+
+### Step 16 — Create R2 API Token (Manual — Dashboard Only)
+
+> **This step is manual.** Creating R2 API tokens via the REST API requires `User API Tokens: Edit` — a high-privilege scope that would allow the token to create tokens with any permission. To avoid granting excessive access, this step is done in the Cloudflare Dashboard.
+
+Display the following instructions to the user and wait for them to provide the three values:
+
+---
+
+```
+📦 R2 API Token Setup (Manual)
+
+Please follow these steps in the Cloudflare Dashboard:
+
+1. Open: https://dash.cloudflare.com → R2 Object Storage → Overview
+2. Click "Manage R2 API Tokens" (top right)
+3. Click "Create API token"
+4. Configure:
+   - Token name:   <bucket_name>-rw
+   - Permissions:  Object Read & Write
+   - Apply to:     ✓ Specify bucket(s) → select "<bucket_name>"
+5. Click "Create API Token"
+6. Copy the following (shown only once):
+   - Access Key ID
+   - Secret Access Key
+   - Endpoint  (format: https://<account_id>.r2.cloudflarestorage.com)
+
+⚠️  The Secret Access Key is shown only once. Save it immediately.
+```
+
+---
+
+Once the user provides all three values, proceed to Step 17.
+
+---
+
+### Step 17 — Write Storage Config to .env
+
+Use the Edit tool to write the known values directly into the project's `.env` file, then show the user what still needs to be filled in manually.
+
+**What Claude already knows from previous steps:**
+- `STORAGE_BUCKET` — bucket name from Step 14
+- `STORAGE_DOMAIN` — public dev URL from Step 15
+- `STORAGE_REGION` — always `auto`
+
+**What the user must fill in manually (from Step 16):**
+- `STORAGE_ENDPOINT` — format: `https://<account_id>.r2.cloudflarestorage.com`
+- `STORAGE_ACCESS_KEY` — Access Key ID
+- `STORAGE_SECRET_KEY` — Secret Access Key
+
+Use the Edit tool to set or update these lines in the project's `.env` file (ask the user for the path if unknown):
+
+```
+STORAGE_ENDPOINT=（待填写）
+STORAGE_REGION=auto
+STORAGE_ACCESS_KEY=（待填写）
+STORAGE_SECRET_KEY=（待填写）
+STORAGE_BUCKET=<actual bucket name from Step 14>
+STORAGE_DOMAIN=<actual public_url from Step 15>
+```
+
+After writing, display this message to the user:
+
+```
+✅ 已写入 .env：STORAGE_BUCKET、STORAGE_DOMAIN、STORAGE_REGION
+
+请手动填写以下三项（值来自 Step 16 Dashboard 页面）：
+  STORAGE_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+  STORAGE_ACCESS_KEY=<Access Key ID>
+  STORAGE_SECRET_KEY=<Secret Access Key>
+
+注意：.env 包含密钥，确保已加入 .gitignore
+```
+
+---
+
+### R2 Error Handling
+
+- Step 14: bucket already exists → `"note": "bucket_already_exists"` — not an error, continue.
+- Step 15: if the API returns an error about the bucket not existing, make sure Step 14 ran successfully first.
+- Step 16: if the user cannot find "Manage R2 API Tokens" in the dashboard, make sure R2 has been enabled for the account (R2 Overview page → Enable R2). If "Specify bucket(s)" option is missing, R2 may not have any buckets yet — ensure Step 14 completed successfully first.
+- Step 17: if the user is unsure which `.env` file to edit, check the project root for `.env`, `.env.local`, or `.env.production`.
+
+---
 
 ## Reference
 

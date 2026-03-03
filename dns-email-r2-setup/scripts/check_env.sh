@@ -1,6 +1,6 @@
 #!/bin/bash
 # check_env.sh — Verify prerequisites before running any domain setup steps
-# Checks: curl, jq, CF_API_TOKEN (Cloudflare), SPACESHIP_API_KEY + SPACESHIP_API_SECRET
+# Checks: curl, jq, CF_API_TOKEN, CF_ACCOUNT_ID (Cloudflare), SPACESHIP_API_KEY + SPACESHIP_API_SECRET
 
 set -euo pipefail
 
@@ -49,6 +49,18 @@ else
     echo "$CF_VERIFY" | jq -r '.errors[0].message // "unknown error"'
     ERRORS=$((ERRORS + 1))
   fi
+fi
+
+echo ""
+
+# ── Cloudflare Account ID (optional — only needed for R2 steps 14–17) ─────
+
+if [ -z "${CF_ACCOUNT_ID:-}" ]; then
+  echo "WARN:  CF_ACCOUNT_ID is not set (required for Steps 14–15, R2 storage)"
+  echo "  Run: export CF_ACCOUNT_ID=\"your_account_id\""
+  echo "  Find it: Cloudflare dashboard → right sidebar on any zone → Account ID"
+else
+  echo "OK: CF_ACCOUNT_ID is set (${CF_ACCOUNT_ID:0:8}...)"
 fi
 
 echo ""
