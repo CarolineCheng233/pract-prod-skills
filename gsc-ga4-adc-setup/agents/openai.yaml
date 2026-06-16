@@ -1,0 +1,4 @@
+interface:
+  display_name: "GSC/GA4 ADC Setup"
+  short_description: "Set up local ADC for GSC and GA4 APIs."
+  default_prompt: "Use $gsc-ga4-adc-setup to configure and verify local ADC access for GSC and GA4."

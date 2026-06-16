@@ -9,3 +9,4 @@
 | [knowledge-base](./knowledge-base/) | 管理个人知识库：创建日记、周报、月报、Bug记录、经验总结、工具收集、项目想法与记录、学习笔记 |
 | [supabase-project-creator](./supabase-project-creator/) | 创建 Supabase 项目并自动配置本地开发环境 |
 | [dns-email-setup](./dns-email-setup/) | 自动化域名全流程配置：Cloudflare DNS 接入、Spaceship 域名服务器更新、邮件转发路由、Brevo 事务邮件域名认证 |
+| [gsc-ga4-adc-setup](./gsc-ga4-adc-setup/) | 配置并验证本机 ADC 对 Google Search Console 和 GA4 API 的只读访问 |
